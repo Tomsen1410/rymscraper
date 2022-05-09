@@ -29,6 +29,9 @@ def main():
         if args.year:
             export_filename += f"_{args.year}"
             url.url_part_year = f"/{args.year}"
+        else:
+            export_filename += f"_alltime"
+            url.url_part_year = f"/all-time"
         if args.genre:
             export_filename += f"_{args.genre}"
             url.url_part_genres = f"/g:{args.genre}"
@@ -44,7 +47,7 @@ def main():
     RymNetwork = rymscraper.RymNetwork(headless=args.no_headless)
 
     logger.info("Extracting infos from the chart.")
-    list_rows = RymNetwork.get_chart_infos(url, max_page=args.page)
+    list_rows = RymNetwork.get_chart_infos_tresan(url, max_page=args.page)
 
     columns = [
         "Rank",
@@ -58,9 +61,9 @@ def main():
     ]
 
     df = pd.DataFrame(list_rows)
-    df = df[columns]
+    # df = df[columns]
     logger.info("Exporting results to %s.", export_filename + ".csv")
-    df.to_csv(export_filename + ".csv", sep="\t", index=False)
+    df.to_csv(export_filename + ".csv", sep=",", index=False)
 
     RymNetwork.browser.close()
     RymNetwork.browser.quit()
@@ -86,6 +89,7 @@ def parse_args():
         "--genre",
         help="Chart Option : Genre. Use '+' if you need a space, multiple genres selection is supported (example: 'genre1,genre2').",
         type=str,
+        default="punk"
     )
     parser.add_argument(
         "-y",
@@ -104,6 +108,7 @@ def parse_args():
         "--page",
         help="Number of page to extract. If not set, every pages will be extracted.",
         type=int,
+        # default="2"
     )
     parser.add_argument(
         "-e",

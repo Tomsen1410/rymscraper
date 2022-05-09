@@ -171,6 +171,74 @@ class RymNetwork:
 
         return list_rows
 
+    def get_chart_infos_tresan(
+        self, url: Optional[str] = None, max_page: int = None
+    ) -> List[Dict]:
+        """Returns a list of dicts containing chart infos.
+
+        Parameters:
+            url: An url for a chart. Can be created with the RymUrl helper.
+            See the get_chart.py script in the examples folder for an example.
+            max_page: The max number of pages to extract from the chart.
+
+        Returns:
+            list_rows: List of dicts for each rows from the chart.
+
+        """
+        logger.info("Extracting chart informations for %s.", url)
+
+        list_rows = []
+        while True:
+            try:
+                self.browser.get_url(url)
+                logger.debug("Extracting chart rows for url %s", url)
+                soup = self.browser.get_soup()
+
+                # table containing albums
+                table = soup.find(
+                    "section", {"id": "page_charts_section_charts"}
+                )
+                if table:
+                    rows = table.find_all(
+                        "div", {"class": [
+                            "page_section_charts_item_wrapper anchor", 
+                            "page_section_charts_item_wrapper is_under_esoteric_threshold anchor"
+                        ]}
+                    )
+                    if len(rows) == 0:
+                        logger.debug("No rows extracted. Exiting")
+                        break
+                    for row in rows:
+                        # don't parse ads
+                        if not row.find("script"):
+                            dict_row = utils.get_chart_row_infos_tresan(row)
+                            list_rows.append(dict_row)
+                else:
+                    logger.warning("Table class mbgen not found")
+                    break
+
+                # link to the next page
+                if soup.find("a", {"class": "ui_pagination_next"}):
+                    logger.debug("Next page found")
+                    if max_page and url.page == max_page:
+                        break
+                    url.page += 1
+                    soup.decompose()
+                    try:
+                        self.browser.get_url(url)
+                        soup = self.browser.get_soup()
+                    except Exception as e:
+                        logger.error(e)
+                        break
+                else:
+                    logger.debug("No next page found. Exiting.")
+                    break
+            except Exception as e:
+                logger.error("Error scraping page %s : %s", url, e)
+                break
+
+        return list_rows
+
     def get_discography_infos(
         self,
         url: str = None,

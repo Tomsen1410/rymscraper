@@ -6,6 +6,7 @@ from tqdm import tqdm
 from bs4 import BeautifulSoup, NavigableString, element
 from selenium.webdriver.common.by import By
 from typing import List
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -230,6 +231,216 @@ def get_chart_row_infos(row: element.Tag) -> dict:
         dict_row["RYM Ratings"] = "NA"
         dict_row["Ratings"] = "NA"
         dict_row["Reviews"] = "NA"
+    return dict_row
+
+def get_chart_row_infos_tresan(row: element.Tag) -> dict:
+    """Returns a dict containing infos from a chart row."""
+    rank = int(row.attrs["style"].split(" ")[1][:-1])
+    dict_row = {}
+    dict_row["rank"] = rank
+
+    row = row.find("div", {"class": "page_charts_section_charts_item_info"})
+
+    # album_name
+    try:
+        dict_row["album_name"] = row.find(
+            "div", {"class": "page_charts_section_charts_item_title"}
+        ).text.strip()
+    except Exception as e:
+        logger.error("album_name: %s", e)
+        dict_row["album_name"] = ""
+
+    # album_href
+    try:
+        dict_row["album_href"] = row.find(
+            "a", {"class": "page_charts_section_charts_item_link release"}
+        ).attrs["href"]
+    except Exception as e:
+        logger.error("album_href: %s", e)
+        dict_row["album_href"] = ""
+
+    # artist_name
+    try:
+        dict_row["artist_name"] = row.find(
+            "div", {"class": "page_charts_section_charts_item_credited_links_primary"}
+        ).text.strip()
+    except Exception as e:
+        logger.error("artist_name: %s", e)
+        dict_row["artist_name"] = ""
+
+    # artist_href
+    try:
+        dict_row["artist_href"] = row.find(
+            "a", {"class": "artist"}
+        ).attrs["href"]
+    except Exception as e:
+        logger.error("artist_href: %s", e)
+        dict_row["artist_href"] = ""
+
+    # stats_average_rating
+    try:
+        dict_row["stats_average_rating"] = float(row.find(
+            "span", {"class": "page_charts_section_charts_item_details_average_num"}
+        ).text)
+    except Exception as e:
+        logger.error("stats_average_rating: %s", e)
+        dict_row["stats_average_rating"] = -1
+
+    # stats_num_ratings
+    try:
+        full = row.find(
+            "span", {"class": "page_charts_section_charts_item_details_ratings"}
+        ).find(
+            "span", {"class": "full"}
+        ).text
+        dict_row["stats_num_ratings"] = int("".join(full.split(",")))
+    except Exception as e:
+        logger.error("stats_num_ratings: %s", e)
+        dict_row["stats_num_ratings"] = ""
+
+    # stats_num_reviews
+    try:
+        full = row.find(
+            "span", {"class": "page_charts_section_charts_item_details_reviews"}
+        ).find(
+            "span", {"class": "full"}
+        ).text
+        dict_row["stats_num_reviews"] = int("".join(full.split(",")))
+    except Exception as e:
+        logger.error("stats_num_reviews: %s", e)
+        dict_row["stats_num_reviews"] = ""
+
+    # album_date
+    try:
+        dict_row["album_date"] = row.find(
+            "div", {"class": "page_charts_section_charts_item_date"}
+        ).contents[1].text
+    except Exception as e:
+        logger.error("album_date: %s", e)
+        dict_row["album_date"] = ""
+
+    # album_genres_primary
+    try:
+        genre_as = row.find(
+            "div", {"class": "page_charts_section_charts_item_genres_primary"}
+        ).find_all("a", {"class": "genre comma_separated"})
+        genre_names = []
+        genre_hrefs = []
+        for g in genre_as:
+            genre_names.append(g.text)
+            genre_hrefs.append(g.attrs["href"])
+        dict_row["album_genre_primary_names"] = genre_names
+        dict_row["album_genre_primary_hrefs"] = genre_hrefs
+    except Exception as e:
+        logger.error("album_genres_primary: %s", e)
+        dict_row["album_genre_primary_names"] = []
+        dict_row["album_genre_primary_hrefs"] = []
+
+    # album_genres_secondary
+    try:
+        genre_as = row.find(
+            "div", {"class": "page_charts_section_charts_item_genres_secondary"}
+        ).find_all("a", {"class": "genre comma_separated"})
+        genre_names = []
+        genre_hrefs = []
+        for g in genre_as:
+            genre_names.append(g.text)
+            genre_hrefs.append(g.attrs["href"])
+        dict_row["album_genre_secondary_names"] = genre_names
+        dict_row["album_genre_secondary_hrefs"] = genre_hrefs
+    except Exception as e:
+        logger.error("album_genres_secondary: %s", e)
+        dict_row["album_genre_secondary_names"] = []
+        dict_row["album_genre_secondary_hrefs"] = []
+
+    # album_genre_descriptors
+    try:
+        tag_spans = row.find(
+            "div", {"class": "page_charts_section_charts_item_genre_descriptors"}
+        ).find_all("span", {"class": "comma_separated"})
+        tags = []
+        for ts in tag_spans:
+            tags.append(ts.text)
+        dict_row["album_genre_descriptors"] = tags
+    except Exception as e:
+        logger.error("album_genre_descriptors: %s", e)
+        dict_row["album_genre_descriptors"] = []
+
+    # album_media_links
+    try:
+        container = row.find(
+            "div", {"class": ["media_link_container lazyload-complete", "media_link_container lazyload-initialized"]}
+        )
+        dict_row["album_media_links"] = json.dumps(
+            json.loads(container.attrs["data-links"]),
+            separators=(',', ':')
+        )
+    except Exception as e:
+        logger.error("album_media_links: %s", e)
+        dict_row["album_media_links"] = "{}"
+
+
+
+    # try:
+    #     dict_row["Rank"] = row.find(
+    #         "div", {"class": "topcharts_position"}
+    #     ).text.replace(".", "")
+    # except Exception as e:
+    #     logger.error("Rank : %s", e)
+    #     dict_row["Rank"] = "NA"
+    # try:
+    #     dict_row["Artist"] = row.find("div", {"class": "topcharts_item_artist"}).text
+    # except Exception as e:
+    #     logger.error("Artist: %s", e)
+    #     dict_row["Artist"] = "NA"
+    # try:
+    #     dict_row["Album"] = row.find("div", {"class": "topcharts_item_title"}).text
+    #     logger.debug(
+    #         "%s - %s - %s",
+    #         dict_row["Rank"],
+    #         dict_row["Artist"],
+    #         dict_row["Album"],
+    #     )
+    # except Exception as e:
+    #     logger.error("Album : %s", e)
+    #     dict_row["Album"] = "NA"
+    # try:
+    #     dict_row["Date"] = (
+    #         row.find("div", {"class": "topcharts_item_releasedate"})
+    #         .text.replace("(", "")
+    #         .replace(")", "")
+    #         .strip()
+    #     )
+    # except Exception as e:
+    #     logger.error("Date : %s", e)
+    #     dict_row["Date"] = "NA"
+    # try:
+    #     dict_row["Genres"] = ", ".join(
+    #         [
+    #             x.text
+    #             for x in row.find(
+    #                 "div", {"class": "topcharts_item_genres_container"}
+    #             ).find_all("a", {"class": "genre"})
+    #         ]
+    #     )
+    # except Exception as e:
+    #     logger.error("Genres : %s", e)
+    #     dict_row["Genres"] = "NA"
+    # try:
+    #     dict_row["RYM Rating"] = row.find(
+    #         "span", {"class": "topcharts_avg_rating_stat"}
+    #     ).text
+    #     dict_row["Ratings"] = row.find(
+    #         "span", {"class": "topcharts_ratings_stat"}
+    #     ).text.replace(",", "")
+    #     dict_row["Reviews"] = row.find(
+    #         "span", {"class": "topcharts_reviews_stat"}
+    #     ).text.replace(",", "")
+    # except Exception as e:
+    #     logger.error("Ratings : %s", e)
+    #     dict_row["RYM Ratings"] = "NA"
+    #     dict_row["Ratings"] = "NA"
+    #     dict_row["Reviews"] = "NA"
     return dict_row
 
 
