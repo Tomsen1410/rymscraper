@@ -13,7 +13,7 @@ temps_debut = time.time()
 
 def main():
     args = parse_args()
-    export_directory = "Exports"
+    export_directory = args.output_dir
     Path(export_directory).mkdir(parents=True, exist_ok=True)
 
     if not args.url:
@@ -84,6 +84,7 @@ def parse_args():
         default=logging.INFO,
     )
     parser.add_argument("-u", "--url", help="Chart URL to parse.", type=str)
+    parser.add_argument("-o", "--output_dir", help="Output directory", type=str, default="exports/")
     parser.add_argument(
         "-g",
         "--genre",
